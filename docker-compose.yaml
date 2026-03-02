@@ -1,0 +1,82 @@
+version: '3.8'
+
+networks:
+  esnet:
+    driver: bridge
+
+services:
+
+  es01:
+    image: elasticsearch:8.11.0
+    container_name: es01
+    environment:
+      - node.name=es01
+      - cluster.name=elasticguard-cluster
+      - discovery.seed_hosts=es02,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms200m -Xmx200m
+      - bootstrap.memory_lock=false
+      - node.roles=master,data_hot,ingest
+    ports:
+      - "9200:9200"
+    networks:
+      - esnet
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  es02:
+    image: elasticsearch:8.11.0
+    container_name: es02
+    environment:
+      - node.name=es02
+      - cluster.name=elasticguard-cluster
+      - discovery.seed_hosts=es01,es03
+      - cluster.initial_master_nodes=es01,es02,es03
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms200m -Xmx200m
+      - bootstrap.memory_lock=false
+      - node.roles=master,data_warm
+    ports:
+      - "9201:9200"
+    networks:
+      - esnet
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  es03:
+    image: elasticsearch:8.11.0
+    container_name: es03
+    environment:
+      - node.name=es03
+      - cluster.name=elasticguard-cluster
+      - discovery.seed_hosts=es01,es02
+      - cluster.initial_master_nodes=es01,es02,es03
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms200m -Xmx200m
+      - bootstrap.memory_lock=false
+      - node.roles=data_cold
+    ports:
+      - "9202:9200"
+    networks:
+      - esnet
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536

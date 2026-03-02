@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ElasticGuard</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Connection Modal -->
+  <div id="connect-modal" class="modal-overlay active">
+    <div class="modal-box">
+      <div class="modal-logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">ElasticGuard</span>
+      </div>
+      <p class="modal-subtitle">Connect to your Elasticsearch cluster</p>
+      <div class="form-group">
+        <label>Cluster URL</label>
+        <input type="text" id="es-node" placeholder="https://localhost:9200" value="http://localhost:9200">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="es-user" placeholder="elastic">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="es-pass" placeholder="••••••••">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>API Key (alternative)</label>
+        <input type="text" id="es-apikey" placeholder="base64_encoded_api_key">
+      </div>
+      <label class="checkbox-label">
+        <input type="checkbox" id="es-skip-tls"> Skip TLS verification
+      </label>
+      <button id="connect-btn" class="btn btn-primary">Connect</button>
+      <div id="connect-error" class="error-msg" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="main-app" style="display:none">
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">ElasticGuard</span>
+      </div>
+      <div class="cluster-badge">
+        <span class="status-dot green"></span>
+        <span id="cluster-name-nav">Connected</span>
+      </div>
+      <ul class="nav-menu">
+        <li><a href="#" class="nav-link active" data-page="dashboard"><span class="nav-icon">◈</span> Dashboard</a></li>
+        <li><a href="#" class="nav-link" data-page="indices"><span class="nav-icon">⊞</span> Indices</a></li>
+        <li><a href="#" class="nav-link" data-page="ilm"><span class="nav-icon">⟳</span> ILM Policies</a></li>
+        <li><a href="#" class="nav-link" data-page="ilmhealth"><span class="nav-icon">🩺</span> ILM Health</a></li>
+        <li><a href="#" class="nav-link" data-page="snapshots"><span class="nav-icon">◎</span> Snapshots</a></li>
+        <li><a href="#" class="nav-link" data-page="codec"><span class="nav-icon">⬡</span> Codec Analyzer</a></li>
+        <li class="nav-divider"></li>
+        <li><a href="#" class="nav-link nav-highlight" data-page="simulator"><span class="nav-icon">🧪</span> Shard Simulator</a></li>
+        <li><a href="#" class="nav-link nav-highlight" data-page="cost"><span class="nav-icon">💰</span> Cost Calculator</a></li>
+        <li><a href="#" class="nav-link nav-highlight" data-page="policyaudit"><span class="nav-icon">🔍</span> Policy Audit</a></li>
+        <li class="nav-divider"></li>
+        <li><a href="#" class="nav-link danger-link" data-page="diagnostics"><span class="nav-icon">⚠</span> Diagnostics</a></li>
+      </ul>
+      <div class="sidebar-footer">
+        <button id="disconnect-btn" class="btn btn-ghost btn-sm">Disconnect</button>
+      </div>
+    </nav>
+
+    <main class="content">
+      <div id="page-dashboard"   class="page active"></div>
+      <div id="page-indices"     class="page"></div>
+      <div id="page-ilm"         class="page"></div>
+      <div id="page-ilmhealth"   class="page"></div>
+      <div id="page-snapshots"   class="page"></div>
+      <div id="page-codec"       class="page"></div>
+      <div id="page-diagnostics" class="page"></div>
+      <div id="page-simulator"   class="page"></div>
+      <div id="page-cost"        class="page"></div>
+      <div id="page-policyaudit" class="page"></div>
+    </main>
+  </div>
+</div>
+
+<script src="/js/utils.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/dashboard.js"></script>
+<script src="/js/indices.js"></script>
+<script src="/js/ilm.js"></script>
+<script src="/js/snapshots.js"></script>
+<script src="/js/diagnostics.js"></script>
+<script src="/js/codec.js"></script>
+<script src="/js/ilm-health.js"></script>
+<script src="/js/simulator.js"></script>
+<script src="/js/cost.js"></script>
+<script src="/js/policy-audit.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
