@@ -62,6 +62,7 @@ router.get('/', requireConnection, async (req, res) => {
     }
     if (replica === '0') filtered = filtered.filter(i => i.replicas === 0);
     if (replica === 'gt0') filtered = filtered.filter(i => i.replicas > 0);
+    if (req.query.orphan === 'true') filtered = filtered.filter(i => i.tier === 'content' && !i.ilm_phase);
 
     // Sort
     filtered.sort((a, b) => {
@@ -78,8 +79,14 @@ router.get('/', requireConnection, async (req, res) => {
       health: { green: 0, yellow: 0, red: 0 },
       total_size_bytes: 0,
       no_replica_size_bytes: 0,
+      orphan_count: 0,
+      orphan_size_bytes: 0,
     };
     indices.forEach(i => {
+      if (i.tier === 'content' && !i.ilm_phase) {
+        summary.orphan_count++;
+        summary.orphan_size_bytes += i.size_bytes;
+      }
       if (i.ilm_phase) summary.phases[i.ilm_phase] = (summary.phases[i.ilm_phase] || 0) + 1;
       if (i.tier) summary.tiers[i.tier] = (summary.tiers[i.tier] || 0) + 1;
       if (i.health) summary.health[i.health] = (summary.health[i.health] || 0) + 1;

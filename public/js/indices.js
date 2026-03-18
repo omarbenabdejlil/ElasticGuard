@@ -1,6 +1,6 @@
 const Indices = {
   data: null,
-  filters: { phase: '', tier: '', status: '', pattern: '', replica: '', sort: 'size_bytes', order: 'desc' },
+    filters: { phase: '', tier: '', status: '', pattern: '', replica: '', orphan: '', sort: 'size_bytes', order: 'desc' },
   page: 1,
   perPage: 50,
 
@@ -35,7 +35,13 @@ const Indices = {
         <div class="stat-card red"><div class="label">Red</div><div class="value">${summary.health.red || 0}</div></div>
         <div class="stat-card accent"><div class="label">Total Size</div><div class="value" style="font-size:18px">${Utils.bytesToHuman(summary.total_size_bytes)}</div></div>
         ${Object.entries(summary.phases).map(([phase,count]) => `<div class="stat-card"><div class="label">${phase}</div><div class="value">${count}</div><div class="sub">phase</div></div>`).join('')}
+        <div class="stat-card ${this.filters.orphan === 'true' ? 'red' : ''}" id="orphan-card" style="cursor:pointer;border:${this.filters.orphan === 'true' ? '2px solid var(--red)' : '1px solid var(--border)'}">
+          <div class="label">Orphan Indices</div>
+          <div class="value" style="color:var(--red)">${summary.orphan_count || 0}</div>
+          <div class="sub">content + no ILM</div>
+        </div>
       </div>
+
 
       ${this.renderFilterBar(summary)}
 
@@ -97,6 +103,11 @@ const Indices = {
     // Search debounced
     const searchInput = document.getElementById('idx-search');
     searchInput?.addEventListener('input', Utils.debounce(() => {
+    document.getElementById('orphan-card')?.addEventListener('click', () => {
+      this.filters.orphan = this.filters.orphan === 'true' ? '' : 'true';
+      if (this.filters.orphan === 'true') { this.filters.tier = ''; this.filters.phase = ''; }
+      this.page = 1; this.render();
+    });
       this.filters.pattern = searchInput.value;
       this.page = 1; this.render();
     }, 350));

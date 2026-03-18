@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ElasticGuard — ILM Control</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#0b0e14;--surface:#111620;--surface2:#171d2b;--border:#1f2b40;--border2:#263347;--text:#c9d4e8;--muted:#5a6a87;--accent:#00c2ff;--accent2:#0080ff;--green:#00e5a0;--yellow:#f5c542;--red:#ff4d6a;--mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;--radius:6px}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.6;min-height:100vh}
+    .layout{display:flex;min-height:100vh}
+    .sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:24px 0;position:sticky;top:0;height:100vh;flex-shrink:0}
+    .logo{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.08em;padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px}
+    .logo span{color:var(--muted);font-weight:400}
+    .nav-label{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--muted);padding:4px 20px 6px;text-transform:uppercase}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:8px 20px;color:var(--muted);cursor:pointer;font-size:13px;font-weight:500;border-left:2px solid transparent;transition:all .15s;user-select:none}
+    .nav-item:hover{color:var(--text);background:rgba(255,255,255,.03)}
+    .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(0,194,255,.06)}
+    .main{flex:1;padding:32px;max-width:1400px;overflow:hidden}
+    .page{display:none}.page.active{display:block}
+    .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px}
+    .page-title{font-size:20px;font-weight:600;color:#e8eef8}
+    .page-subtitle{font-size:13px;color:var(--muted);margin-top:3px}
+    .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+    .stat-card .label{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+    .stat-card .value{font-size:26px;font-weight:600;color:var(--text);margin-top:4px}
+    .stat-card .sub{font-size:11px;color:var(--muted);margin-top:2px}
+    .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+    .search-input{flex:1;min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;transition:border-color .15s}
+    .search-input::placeholder{color:var(--muted)}.search-input:focus{border-color:var(--accent)}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
+    .btn:hover{border-color:var(--border2);background:var(--border)}
+    .btn-primary{background:var(--accent2);border-color:var(--accent2);color:#fff}.btn-primary:hover{background:#0070e0;border-color:#0070e0}
+    .btn-danger{background:rgba(255,77,106,.12);border-color:var(--red);color:var(--red)}.btn-danger:hover{background:rgba(255,77,106,.22)}
+    .btn-success{background:rgba(0,229,160,.1);border-color:var(--green);color:var(--green)}.btn-success:hover{background:rgba(0,229,160,.2)}
+    .btn-sm{padding:5px 10px;font-size:11px}.btn:disabled{opacity:.4;cursor:not-allowed}
+    .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+    table{width:100%;border-collapse:collapse}
+    thead{background:var(--surface2)}
+    th{padding:10px 14px;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;text-align:left;border-bottom:1px solid var(--border)}
+    td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+    tr:last-child td{border-bottom:none}tr:hover td{background:rgba(255,255,255,.02)}
+    .mono{font-family:var(--mono)}
+    .badge{display:inline-block;padding:2px 7px;border-radius:3px;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.04em}
+    .badge-green{background:rgba(0,229,160,.15);color:var(--green);border:1px solid rgba(0,229,160,.3)}
+    .badge-yellow{background:rgba(245,197,66,.12);color:var(--yellow);border:1px solid rgba(245,197,66,.3)}
+    .badge-red{background:rgba(255,77,106,.12);color:var(--red);border:1px solid rgba(255,77,106,.3)}
+    .badge-blue{background:rgba(0,194,255,.1);color:var(--accent);border:1px solid rgba(0,194,255,.25)}
+    .badge-gray{background:rgba(90,106,135,.15);color:var(--muted);border:1px solid rgba(90,106,135,.3)}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+    .panel-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600}
+    .panel-body{padding:16px}
+    .progress-wrap{width:80px;background:var(--border);border-radius:2px;height:4px}
+    .progress-bar{height:4px;border-radius:2px;transition:width .3s}
+    .progress-bar.green{background:var(--green)}.progress-bar.yellow{background:var(--yellow)}.progress-bar.red{background:var(--red)}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:100;padding:24px}
+    .modal-overlay.open{display:flex}
+    .modal{background:var(--surface);border:1px solid var(--border2);border-radius:8px;width:100%;max-width:640px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+    .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600}
+    .modal-close{cursor:pointer;color:var(--muted);font-size:18px}.modal-close:hover{color:var(--text)}
+    .modal-body{padding:20px}.modal-foot{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+    .form-row{margin-bottom:14px}
+    label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase}
+    .form-input,.form-select,.form-textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;transition:border-color .15s}
+    .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent)}
+    .form-textarea{resize:vertical;min-height:120px}.form-select option{background:var(--surface)}
+    #toast{position:fixed;bottom:28px;right:28px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 18px;font-size:12px;font-family:var(--mono);color:var(--text);z-index:200;transform:translateY(80px);opacity:0;transition:all .25s;max-width:340px}
+    #toast.show{transform:translateY(0);opacity:1}
+    #toast.success{border-color:var(--green);color:var(--green)}
+    #toast.error{border-color:var(--red);color:var(--red)}
+    #toast.warn{border-color:var(--yellow);color:var(--yellow)}
+    .index-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+    .index-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;transition:border-color .15s}
+    .index-card:hover{border-color:var(--border2)}
+    .index-card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+    .index-name{font-family:var(--mono);font-size:11px;color:var(--accent);word-break:break-all}
+    .index-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-bottom:12px}
+    .index-meta-item .k{font-size:10px;color:var(--muted)}.index-meta-item .v{font-family:var(--mono);font-size:12px;color:var(--text)}
+    .rollover-section{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+    .rollover-label{font-size:10px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:5px}
+    .warn-item{font-size:10px;color:var(--yellow)}.err-item{font-size:10px;color:var(--red)}
+    .phase-pipeline{display:flex;align-items:center;gap:0;margin:8px 0;flex-wrap:wrap}
+    .phase-node{padding:3px 10px;font-family:var(--mono);font-size:10px;font-weight:600;border:1px solid var(--border);border-radius:3px;color:var(--muted)}
+    .phase-node.active{border-color:var(--accent);color:var(--accent);background:rgba(0,194,255,.1)}
+    .phase-arrow{color:var(--border2);font-size:12px;padding:0 3px}
+    .loading{text-align:center;padding:60px;color:var(--muted);font-family:var(--mono);font-size:12px}
+    .loading::after{content:'';display:block;margin:12px auto 0;width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .empty{text-align:center;padding:48px;color:var(--muted);font-size:13px}
+    .info-box{background:rgba(0,194,255,.07);border:1px solid rgba(0,194,255,.2);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--accent);margin-bottom:14px}
+    .tag-list{display:flex;gap:5px;flex-wrap:wrap}
+    .tag{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(90,106,135,.2);color:var(--muted)}
+    ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+  </style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="logo">ELASTIC<span>GUARD</span></div>
+    <div class="nav-label">Existing</div>
+    <div class="nav-item" onclick="location.href='/'">🏠 Dashboard</div>
+    <div class="nav-label" style="margin-top:8px">New Features</div>
+    <div class="nav-item active" id="nav-ilm" onclick="switchPage('ilm')">🔄 ILM Policies</div>
+    <div class="nav-item" id="nav-templates" onclick="switchPage('templates')">📋 Index Templates</div>
+    <div class="nav-item" id="nav-orphaned" onclick="switchPage('orphaned')">🚨 Orphaned Indices</div>
+    <div class="nav-item" id="nav-stats" onclick="switchPage('stats')">📊 Index Statistics</div>
+  </nav>
+  <main class="main">
+
+    <!-- ILM POLICIES -->
+    <div class="page active" id="page-ilm">
+      <div class="page-header">
+        <div><div class="page-title">ILM Policy Manager</div><div class="page-subtitle">Create, edit, and assign lifecycle policies</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="loadIlmPolicies()">↻ Refresh</button>
+          <button class="btn btn-primary" onclick="openCreatePolicyModal()">+ New Policy</button>
+        </div>
+      </div>
+      <div class="panel" style="margin-bottom:20px">
+        <div class="panel-head">⚡ Bulk Attach by Prefix</div>
+        <div class="panel-body">
+          <div class="info-box">Attach a policy to every index matching a prefix — ex: <code>valentine-logs-</code></div>
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+            <div style="flex:1;min-width:180px"><label>Index Prefix</label><input class="form-input" id="bulk-prefix" placeholder="valentine-logs-" /></div>
+            <div style="flex:1;min-width:180px"><label>Policy Name</label><select class="form-select" id="bulk-policy-select"><option value="">— select policy —</option></select></div>
+            <button class="btn btn-primary" onclick="bulkAttach()">Attach</button>
+          </div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="label">Total Policies</div><div class="value" id="s-total-policies">—</div></div>
+        <div class="stat-card"><div class="label">Good</div><div class="value" id="s-good-policies" style="color:var(--green)">—</div></div>
+        <div class="stat-card"><div class="label">Warn</div><div class="value" id="s-warn-policies" style="color:var(--yellow)">—</div></div>
+        <div class="stat-card"><div class="label">Bad</div><div class="value" id="s-bad-policies" style="color:var(--red)">—</div></div>
+      </div>
+      <div class="toolbar"><input class="search-input" id="ilm-search" placeholder="Filter policies…" oninput="filterIlmTable()" /></div>
+      <div class="table-wrap"><table><thead><tr><th>Policy Name</th><th>Phases</th><th>Rollover</th><th>Quality</th><th>Actions</th></tr></thead><tbody id="ilm-tbody"><tr><td colspan="5" class="loading">Loading…</td></tr></tbody></table></div>
+    </div>
+
+    <!-- TEMPLATES -->
+    <div class="page" id="page-templates">
+      <div class="page-header">
+        <div><div class="page-title">Index Template Manager</div><div class="page-subtitle">Composable & legacy templates with ILM assignments</div></div>
+        <div style="display:flex;gap:8px"><button class="btn" onclick="loadTemplates()">↻ Refresh</button><button class="btn btn-primary" onclick="openCreateTemplateModal()">+ New Template</button></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="label">Composable</div><div class="value" id="s-composable">—</div></div>
+        <div class="stat-card"><div class="label">Legacy</div><div class="value" id="s-legacy">—</div></div>
+        <div class="stat-card"><div class="label">With ILM</div><div class="value" id="s-tmpl-ilm" style="color:var(--green)">—</div></div>
+        <div class="stat-card"><div class="label">Without ILM</div><div class="value" id="s-tmpl-no-ilm" style="color:var(--yellow)">—</div></div>
+      </div>
+      <div class="toolbar">
+        <input class="search-input" id="tmpl-search" placeholder="Filter templates…" oninput="filterTmplTable()" />
+        <select class="form-select" style="width:140px" id="tmpl-type-filter" onchange="filterTmplTable()"><option value="">All types</option><option value="composable">Composable</option><option value="legacy">Legacy</option></select>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Template Name</th><th>Type</th><th>Index Patterns</th><th>Priority</th><th>ILM Policy</th><th>Actions</th></tr></thead><tbody id="tmpl-tbody"><tr><td colspan="6" class="loading">Loading…</td></tr></tbody></table></div>
+    </div>
+
+    <!-- ORPHANED -->
+    <div class="page" id="page-orphaned">
+      <div class="page-header">
+        <div><div class="page-title">Orphaned Index Fixer</div><div class="page-subtitle">Broken ILM references & unmanaged indices</div></div>
+        <button class="btn" onclick="loadOrphaned()">↻ Scan Now</button>
+      </div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="label">Broken ILM Ref</div><div class="value" id="s-orphaned" style="color:var(--red)">—</div></div>
+        <div class="stat-card"><div class="label">No ILM Assigned</div><div class="value" id="s-no-policy" style="color:var(--yellow)">—</div></div>
+        <div class="stat-card"><div class="label">Selected</div><div class="value" id="s-selected">0</div></div>
+        <div class="stat-card"><div class="label">Available Policies</div><div class="value" id="s-policy-count">—</div></div>
+      </div>
+      <div class="panel" style="margin-bottom:20px">
+        <div class="panel-head">🔧 Bulk Fix Selected</div>
+        <div class="panel-body" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <div style="flex:1;min-width:220px"><label>Assign Policy</label><select class="form-select" id="fix-policy-select"><option value="">— select policy —</option></select></div>
+          <button class="btn btn-success" onclick="fixSelected()">✓ Fix Selected</button>
+          <button class="btn" onclick="selectAllOrphaned()">Select All Broken</button>
+        </div>
+      </div>
+      <div style="margin-bottom:8px;font-size:12px;color:var(--muted)">Indices with broken ILM references (policy set but deleted from cluster)</div>
+      <div class="table-wrap" style="margin-bottom:20px"><table><thead><tr><th style="width:32px"><input type="checkbox" id="chk-all-orphaned" onchange="toggleAllOrphaned(this.checked)" /></th><th>Index Name</th><th>Referenced Policy</th><th>Issue</th><th>Actions</th></tr></thead><tbody id="orphaned-tbody"><tr><td colspan="5" class="empty">Click Scan Now to start</td></tr></tbody></table></div>
+      <div style="margin-bottom:12px;font-size:13px;font-weight:600">Unmanaged Indices (no ILM policy)</div>
+      <div class="toolbar">
+        <input class="search-input" id="no-policy-search" placeholder="Filter unmanaged…" oninput="filterNoPolicy()" style="max-width:320px" />
+        <select class="form-select" style="width:200px" id="no-policy-assign-policy"><option value="">— select policy —</option></select>
+        <button class="btn btn-success" onclick="bulkAssignSelected()">Assign to Selected</button>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th style="width:32px"><input type="checkbox" id="chk-all-nopolicy" onchange="toggleAllNoPolicy(this.checked)" /></th><th>Index Name</th><th>Actions</th></tr></thead><tbody id="no-policy-tbody"><tr><td colspan="3" class="empty">Click Scan Now to start</td></tr></tbody></table></div>
+    </div>
+
+    <!-- INDEX STATS -->
+    <div class="page" id="page-stats">
+      <div class="page-header">
+        <div><div class="page-title">Index Statistics</div><div class="page-subtitle">Health, ILM phase, rollover countdown and policy quality</div></div>
+        <button class="btn" onclick="loadIndexStats()">↻ Refresh</button>
+      </div>
+      <div class="toolbar">
+        <input class="search-input" id="stats-search" placeholder="Filter by index name…" oninput="filterStats()" />
+        <input class="form-input" id="stats-prefix" placeholder="Prefix (e.g. valentine-)" style="max-width:220px" />
+        <button class="btn btn-primary" onclick="loadIndexStats()">Apply</button>
+        <select class="form-select" style="width:140px" id="stats-health-filter" onchange="filterStats()"><option value="">All health</option><option value="green">Green</option><option value="yellow">Yellow</option><option value="red">Red</option></select>
+      </div>
+      <div id="stats-grid" class="index-grid"><div class="loading">Loading…</div></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL POLICY -->
+<div class="modal-overlay" id="modal-policy">
+  <div class="modal">
+    <div class="modal-head"><span id="modal-policy-title">Create ILM Policy</span><span class="modal-close" onclick="closeModal('modal-policy')">✕</span></div>
+    <div class="modal-body">
+      <div class="form-row"><label>Policy Name</label><input class="form-input" id="policy-name-input" placeholder="my-logs-policy" /></div>
+      <div class="form-row"><label>Policy JSON</label><textarea class="form-textarea" id="policy-json-input" style="min-height:300px;font-size:11px" placeholder='{"phases":{"hot":{"actions":{"rollover":{"max_age":"30d","max_size":"50gb"}}},"delete":{"min_age":"90d","actions":{"delete":{}}}}}'></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('modal-policy')">Cancel</button><button class="btn btn-primary" onclick="savePolicy()">Save Policy</button></div>
+  </div>
+</div>
+
+<!-- MODAL TEMPLATE -->
+<div class="modal-overlay" id="modal-template">
+  <div class="modal">
+    <div class="modal-head"><span id="modal-tmpl-title">Create Index Template</span><span class="modal-close" onclick="closeModal('modal-template')">✕</span></div>
+    <div class="modal-body">
+      <div class="form-row"><label>Template Name</label><input class="form-input" id="tmpl-name-input" placeholder="my-logs-template" /></div>
+      <div class="form-row"><label>Template JSON</label><textarea class="form-textarea" id="tmpl-json-input" style="min-height:280px;font-size:11px" placeholder='{"index_patterns":["my-logs-*"],"priority":100,"template":{"settings":{"index.lifecycle.name":"my-policy"}}}'></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('modal-template')">Cancel</button><button class="btn btn-primary" onclick="saveTemplate()">Save Template</button></div>
+  </div>
+</div>
+
+<!-- MODAL ATTACH -->
+<div class="modal-overlay" id="modal-attach">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head"><span>Attach ILM Policy</span><span class="modal-close" onclick="closeModal('modal-attach')">✕</span></div>
+    <div class="modal-body">
+      <div class="form-row"><label>Index</label><input class="form-input" id="attach-index-input" readonly /></div>
+      <div class="form-row"><label>ILM Policy</label><select class="form-select" id="attach-policy-select"><option value="">— select —</option></select></div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('modal-attach')">Cancel</button><button class="btn btn-primary" onclick="doAttach()">Attach</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+const state={policies:[],templates:[],orphaned:[],noPolicy:[],indexStats:[],policyNames:[]};
+function switchPage(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');document.getElementById('nav-'+name).classList.add('active');if(name==='ilm'&&!state.policies.length)loadIlmPolicies();if(name==='templates'&&!state.templates.length)loadTemplates();if(name==='stats'&&!state.indexStats.length)loadIndexStats();}
+let toastTimer;
+function toast(msg,type='success'){const el=document.getElementById('toast');el.textContent=msg;el.className='show '+type;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3500);}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+async function api(method,url,body){const opts={method,headers:{'Content-Type':'application/json'}};if(body)opts.body=JSON.stringify(body);const r=await fetch(url,opts);const data=await r.json();if(!r.ok)throw new Error(data.error||'Request failed');return data;}
+function setTableLoading(id,cols){document.getElementById(id).innerHTML=`<tr><td colspan="${cols}" class="loading">Loading…</td></tr>`;}
+function updatePolicySelects(){const opts='<option value="">— select policy —</option>'+state.policyNames.map(n=>`<option value="${n}">${n}</option>`).join('');['bulk-policy-select','fix-policy-select','no-policy-assign-policy'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});}
+function fmtNum(n){if(!n)return'0';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toString();}
+
+async function loadIlmPolicies(){setTableLoading('ilm-tbody',5);try{const{policies}=await api('GET','/api/ilm-ctrl/policies');state.policies=policies;state.policyNames=policies.map(p=>p.name);renderIlmTable();updatePolicySelects();document.getElementById('s-total-policies').textContent=policies.length;document.getElementById('s-good-policies').textContent=policies.filter(p=>p._meta?.score==='good').length;document.getElementById('s-warn-policies').textContent=policies.filter(p=>p._meta?.score==='warn').length;document.getElementById('s-bad-policies').textContent=policies.filter(p=>p._meta?.score==='bad').length;}catch(e){toast(e.message,'error');}}
+function renderIlmTable(list){const data=list||state.policies;const tbody=document.getElementById('ilm-tbody');if(!data.length){tbody.innerHTML='<tr><td colspan="5" class="empty">No policies found</td></tr>';return;}tbody.innerHTML=data.map(p=>{const phases=p.policy?.phases||{};const phaseNames=['hot','warm','cold','frozen','delete'].filter(ph=>phases[ph]);const rollover=phases.hot?.actions?.rollover;const rolloverStr=rollover?[rollover.max_age,rollover.max_size,rollover.max_docs].filter(Boolean).join(' / '):'—';const score=p._meta?.score||'good';const warnings=p._meta?.warnings||[];const bc=score==='good'?'badge-green':score==='warn'?'badge-yellow':'badge-red';return`<tr><td class="mono" style="color:var(--accent)">${p.name}</td><td>${phaseNames.map(ph=>`<span class="badge badge-gray" style="margin-right:3px">${ph}</span>`).join('')||'<span class="badge badge-red">none</span>'}</td><td class="mono" style="font-size:11px">${rolloverStr}</td><td><span class="badge ${bc}">${score.toUpperCase()}</span>${warnings.map(w=>`<div class="warn-item">⚠ ${w}</div>`).join('')}</td><td><div style="display:flex;gap:5px"><button class="btn btn-sm" onclick="editPolicy('${p.name}')">Edit</button><button class="btn btn-sm btn-danger" onclick="deletePolicy('${p.name}')">Delete</button></div></td></tr>`;}).join('');}
+function filterIlmTable(){const q=document.getElementById('ilm-search').value.toLowerCase();renderIlmTable(state.policies.filter(p=>p.name.toLowerCase().includes(q)));}
+function openCreatePolicyModal(){document.getElementById('modal-policy-title').textContent='Create ILM Policy';document.getElementById('policy-name-input').value='';document.getElementById('policy-json-input').value='';document.getElementById('policy-name-input').readOnly=false;openModal('modal-policy');}
+async function editPolicy(name){try{const data=await api('GET','/api/ilm-ctrl/policies');const policy=data.policies.find(p=>p.name===name);document.getElementById('modal-policy-title').textContent='Edit: '+name;document.getElementById('policy-name-input').value=name;document.getElementById('policy-name-input').readOnly=true;document.getElementById('policy-json-input').value=JSON.stringify(policy.policy,null,2);openModal('modal-policy');}catch(e){toast(e.message,'error');}}
+async function savePolicy(){const name=document.getElementById('policy-name-input').value.trim();const jsonStr=document.getElementById('policy-json-input').value.trim();if(!name){toast('Policy name required','error');return;}let policy;try{policy=JSON.parse(jsonStr);}catch{toast('Invalid JSON','error');return;}try{await api('PUT',`/api/ilm-ctrl/policies/${name}`,{policy});toast(`Policy '${name}' saved`,'success');closeModal('modal-policy');loadIlmPolicies();}catch(e){toast(e.message,'error');}}
+async function deletePolicy(name){if(!confirm(`Delete policy '${name}'?`))return;try{await api('DELETE',`/api/ilm-ctrl/policies/${name}`);toast('Deleted','success');loadIlmPolicies();}catch(e){toast(e.message,'error');}}
+async function bulkAttach(){const prefix=document.getElementById('bulk-prefix').value.trim();const policyName=document.getElementById('bulk-policy-select').value;if(!prefix||!policyName){toast('Prefix and policy required','error');return;}try{const r=await api('POST','/api/ilm-ctrl/attach-by-prefix',{prefix,policyName});toast(`Attached '${policyName}' to ${r.succeeded}/${r.total} indices${r.failed.length?` (${r.failed.length} failed)`:''}`,r.failed.length?'warn':'success');}catch(e){toast(e.message,'error');}}
+
+async function loadTemplates(){setTableLoading('tmpl-tbody',6);try{const{templates}=await api('GET','/api/templates');state.templates=templates;renderTmplTable();document.getElementById('s-composable').textContent=templates.filter(t=>t.type==='composable').length;document.getElementById('s-legacy').textContent=templates.filter(t=>t.type==='legacy').length;document.getElementById('s-tmpl-ilm').textContent=templates.filter(t=>t.ilmPolicy).length;document.getElementById('s-tmpl-no-ilm').textContent=templates.filter(t=>!t.ilmPolicy).length;}catch(e){toast(e.message,'error');}}
+function renderTmplTable(list){const data=list||state.templates;const tbody=document.getElementById('tmpl-tbody');if(!data.length){tbody.innerHTML='<tr><td colspan="6" class="empty">No templates</td></tr>';return;}tbody.innerHTML=data.map(t=>`<tr><td class="mono" style="color:var(--accent)">${t.name}</td><td><span class="badge ${t.type==='composable'?'badge-blue':'badge-gray'}">${t.type}</span></td><td><div class="tag-list">${(t.indexPatterns||[]).map(p=>`<span class="tag">${p}</span>`).join('')}</div></td><td class="mono">${t.priority??'—'}</td><td>${t.ilmPolicy?`<span class="badge badge-green">${t.ilmPolicy}</span>`:'<span class="badge badge-yellow">none</span>'}</td><td><div style="display:flex;gap:5px"><button class="btn btn-sm" onclick="editTemplate('${t.name}','${t.type}')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteTemplate('${t.name}','${t.type}')">Delete</button></div></td></tr>`).join('');}
+function filterTmplTable(){const q=document.getElementById('tmpl-search').value.toLowerCase();const type=document.getElementById('tmpl-type-filter').value;renderTmplTable(state.templates.filter(t=>t.name.toLowerCase().includes(q)&&(!type||t.type===type)));}
+function openCreateTemplateModal(){document.getElementById('modal-tmpl-title').textContent='Create Index Template';document.getElementById('tmpl-name-input').value='';document.getElementById('tmpl-json-input').value='';document.getElementById('tmpl-name-input').readOnly=false;openModal('modal-template');}
+async function editTemplate(name,type){try{const data=await api('GET',`/api/templates/${name}`);document.getElementById('modal-tmpl-title').textContent='Edit: '+name;document.getElementById('tmpl-name-input').value=name;document.getElementById('tmpl-name-input').readOnly=true;document.getElementById('tmpl-json-input').value=JSON.stringify(data.index_template||data,null,2);openModal('modal-template');}catch(e){toast(e.message,'error');}}
+async function saveTemplate(){const name=document.getElementById('tmpl-name-input').value.trim();const jsonStr=document.getElementById('tmpl-json-input').value.trim();if(!name){toast('Name required','error');return;}let body;try{body=JSON.parse(jsonStr);}catch{toast('Invalid JSON','error');return;}try{await api('PUT',`/api/templates/${name}`,body);toast('Template saved','success');closeModal('modal-template');loadTemplates();}catch(e){toast(e.message,'error');}}
+async function deleteTemplate(name,type){if(!confirm(`Delete '${name}'?`))return;try{await api('DELETE',`/api/templates/${name}?type=${type}`);toast('Deleted','success');loadTemplates();}catch(e){toast(e.message,'error');}}
+
+async function loadOrphaned(){setTableLoading('orphaned-tbody',5);setTableLoading('no-policy-tbody',3);try{const data=await api('GET','/api/ilm-ctrl/orphaned');state.orphaned=data.orphaned;state.noPolicy=data.noPolicy;renderOrphaned();renderNoPolicy();document.getElementById('s-orphaned').textContent=data.orphaned.length;document.getElementById('s-no-policy').textContent=data.noPolicy.length;document.getElementById('s-policy-count').textContent=state.policyNames.length||'—';}catch(e){toast(e.message,'error');}}
+function renderOrphaned(list){const data=list||state.orphaned;const tbody=document.getElementById('orphaned-tbody');if(!data.length){tbody.innerHTML='<tr><td colspan="5" class="empty">✓ No orphaned indices</td></tr>';return;}tbody.innerHTML=data.map(o=>`<tr><td><input type="checkbox" class="chk-orphaned" data-index="${o.index}" onchange="updateSelectedCount()" /></td><td class="mono" style="color:var(--accent)">${o.index}</td><td class="mono" style="color:var(--red)">${o.referencedPolicy}</td><td><span class="badge badge-red">Policy Missing</span></td><td><div style="display:flex;gap:5px"><button class="btn btn-sm" onclick="openAttachModal('${o.index}')">Fix</button><button class="btn btn-sm btn-danger" onclick="detachIlm('${o.index}')">Clear</button></div></td></tr>`).join('');}
+function renderNoPolicy(list){const data=list||state.noPolicy;const tbody=document.getElementById('no-policy-tbody');if(!data.length){tbody.innerHTML='<tr><td colspan="3" class="empty">All indices have ILM</td></tr>';return;}tbody.innerHTML=data.map(o=>`<tr><td><input type="checkbox" class="chk-nopolicy" data-index="${o.index}" onchange="updateSelectedCount()" /></td><td class="mono">${o.index}</td><td><button class="btn btn-sm" onclick="openAttachModal('${o.index}')">Assign ILM</button></td></tr>`).join('');}
+function filterNoPolicy(){const q=document.getElementById('no-policy-search').value.toLowerCase();renderNoPolicy(state.noPolicy.filter(o=>o.index.toLowerCase().includes(q)));}
+function updateSelectedCount(){document.getElementById('s-selected').textContent=document.querySelectorAll('.chk-orphaned:checked,.chk-nopolicy:checked').length;}
+function toggleAllOrphaned(checked){document.querySelectorAll('.chk-orphaned').forEach(c=>c.checked=checked);updateSelectedCount();}
+function toggleAllNoPolicy(checked){document.querySelectorAll('.chk-nopolicy').forEach(c=>c.checked=checked);updateSelectedCount();}
+function selectAllOrphaned(){document.querySelectorAll('.chk-orphaned').forEach(c=>c.checked=true);updateSelectedCount();}
+async function fixSelected(){const policyName=document.getElementById('fix-policy-select').value;if(!policyName){toast('Select a policy','error');return;}const indices=[...document.querySelectorAll('.chk-orphaned:checked')].map(c=>c.dataset.index);if(!indices.length){toast('No indices selected','warn');return;}try{const r=await api('POST','/api/ilm-ctrl/fix-orphaned',{indices,policyName});toast(`Fixed ${r.succeeded}/${indices.length}`,r.failed?.length?'warn':'success');loadOrphaned();}catch(e){toast(e.message,'error');}}
+async function bulkAssignSelected(){const policyName=document.getElementById('no-policy-assign-policy').value;if(!policyName){toast('Select a policy','error');return;}const indices=[...document.querySelectorAll('.chk-nopolicy:checked')].map(c=>c.dataset.index);if(!indices.length){toast('No indices selected','warn');return;}try{const r=await api('POST','/api/ilm-ctrl/fix-orphaned',{indices,policyName});toast(`Assigned to ${r.succeeded}/${indices.length}`,r.failed?.length?'warn':'success');loadOrphaned();}catch(e){toast(e.message,'error');}}
+function openAttachModal(index){document.getElementById('attach-index-input').value=index;const sel=document.getElementById('attach-policy-select');sel.innerHTML='<option value="">— select —</option>'+state.policyNames.map(n=>`<option value="${n}">${n}</option>`).join('');openModal('modal-attach');}
+async function doAttach(){const index=document.getElementById('attach-index-input').value;const policyName=document.getElementById('attach-policy-select').value;if(!policyName){toast('Select a policy','error');return;}try{await api('POST','/api/ilm-ctrl/attach',{index,policyName});toast(`Attached '${policyName}' → ${index}`,'success');closeModal('modal-attach');loadOrphaned();}catch(e){toast(e.message,'error');}}
+async function detachIlm(index){if(!confirm(`Clear ILM from '${index}'?`))return;try{await api('POST','/api/ilm-ctrl/detach',{index});toast('ILM cleared','success');loadOrphaned();}catch(e){toast(e.message,'error');}}
+
+async function loadIndexStats(){const grid=document.getElementById('stats-grid');grid.innerHTML='<div class="loading">Loading…</div>';const prefix=document.getElementById('stats-prefix').value.trim();try{const params=new URLSearchParams({limit:200});if(prefix)params.set('prefix',prefix);const{stats}=await api('GET',`/api/index-stats?${params}`);state.indexStats=stats;filterStats();}catch(e){grid.innerHTML=`<div class="empty" style="color:var(--red)">Error: ${e.message}</div>`;}}
+function filterStats(){const q=document.getElementById('stats-search').value.toLowerCase();const health=document.getElementById('stats-health-filter').value;renderStatCards(state.indexStats.filter(s=>s.index.toLowerCase().includes(q)&&(!health||s.health===health)));}
+function renderStatCards(data){const grid=document.getElementById('stats-grid');if(!data.length){grid.innerHTML='<div class="empty">No indices match</div>';return;}const knownPhases=['hot','warm','cold','frozen','delete'];grid.innerHTML=data.map(s=>{const hb=`<span class="badge ${s.health==='green'?'badge-green':s.health==='yellow'?'badge-yellow':'badge-red'}">${s.health}</span>`;const cur=s.ilm?.phase;const pipeline=knownPhases.map((ph,i)=>`<span class="phase-node ${ph===cur?'active':''}">${ph}</span>${i<4?'<span class="phase-arrow">›</span>':''}`).join('');const r=s.rolloverEstimate;let rollHtml='';if(r&&r.maxAgeDays!==null){const bc=r.pct<60?'green':r.pct<85?'yellow':'red';rollHtml=`<div class="rollover-section"><div class="rollover-label"><span>${r.ageInPhaseDays}d / ${r.maxAgeDays}d</span><span>${r.daysUntilRollover}d left</span></div><div class="progress-wrap"><div class="progress-bar ${bc}" style="width:${r.pct}%"></div></div></div>`;}return`<div class="index-card"><div class="index-card-head"><div class="index-name">${s.index}</div>${hb}</div><div class="index-meta"><div class="index-meta-item"><div class="k">Size</div><div class="v">${s.storeSizeGb} GB</div></div><div class="index-meta-item"><div class="k">Docs</div><div class="v">${fmtNum(s.docsCount)}</div></div><div class="index-meta-item"><div class="k">Shards</div><div class="v">${s.primaryShards}P/${s.replicas}R</div></div><div class="index-meta-item"><div class="k">Created</div><div class="v">${s.creationDateString||'—'}</div></div></div>${s.policyName?`<div style="margin-bottom:8px"><span class="badge badge-blue">${s.policyName}</span></div><div class="phase-pipeline">${pipeline}</div>${s.ilm?.error?`<div class="err-item">✖ ${s.ilm.error}</div>`:''}`:'<div style="font-size:11px;color:var(--yellow)">⚠ No ILM policy</div>'}${rollHtml}</div>`;}).join('');}
+
+loadIlmPolicies();
+</script>
+</body>
+</html>

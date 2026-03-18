@@ -16,6 +16,7 @@ app.use('/api/ilm-health',   require('./routes/ilm-health'));
 app.use('/api/simulator',    require('./routes/simulator'));
 app.use('/api/cost',         require('./routes/cost'));
 app.use('/api/policy-audit', require('./routes/policy-audit'));
+app.use('/', require('./routes/ilm-control'));
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

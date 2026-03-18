@@ -10,6 +10,10 @@
     simulator:   Simulator,
     cost:        Cost,
     policyaudit: PolicyAudit,
+    'ilm-control': { render: () => renderIlmControlPage(document.getElementById('page-ilm-control')) },
+    templates:    { render: () => renderTemplatesPage(document.getElementById('page-templates')) },
+    orphaned:     { render: () => renderOrphanedPage(document.getElementById('page-orphaned')) },
+    idxstats:     { render: () => renderIdxStatsPage(document.getElementById('page-idxstats')) },
   };
 
   let currentPage = null;
