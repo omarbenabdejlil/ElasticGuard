@@ -88,15 +88,20 @@ const Snapshots = {
   renderSLM(data) {
     if (!data.slm_policies.length) return '<div class="empty-state"><div class="icon">⏱</div><p>No SLM policies configured</p></div>';
     return `<div class="table-wrap"><table>
-      <thead><tr><th>Policy</th><th>Repository</th><th>Schedule</th><th>Retention</th><th>Last Success</th><th>Last Failure</th></tr></thead>
+      <thead><tr><th>Policy</th><th>Repository</th><th>Schedule</th><th>Indices couverts</th><th>Retention</th><th>Last Success</th><th>Last Failure</th></tr></thead>
       <tbody>
         ${data.slm_policies.map(p => {
           const last = p.last_success;
           const fail = p.last_failure;
+          const indices = p.policy?.config?.indices || [];
+          const indicesHtml = indices.length
+            ? `<div style="display:flex;flex-wrap:wrap;gap:4px;max-width:340px">${indices.map(i => `<span onclick="navigator.clipboard.writeText('${i}').then(()=>{this.style.background='#d4edda';this.style.borderColor='#28a745';this.title='Copied!';setTimeout(()=>{this.style.background='#eef4fb';this.style.borderColor='#ccdff5';this.title='Click to copy'},1200)})" title="Click to copy" style="display:inline-block;font-family:monospace;font-size:10px;padding:2px 8px;background:#eef4fb;border:1px solid #ccdff5;border-radius:4px;color:#1e3a5f;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='#d0e8ff';this.style.borderColor='#378add'" onmouseout="if(this.style.borderColor!=='rgb(40, 167, 69)'){this.style.background='#eef4fb';this.style.borderColor='#ccdff5'}">${Utils.escapeHtml(i)}</span>`).join('')}</div>`
+            : '<span class="text-muted" style="font-size:11px">all indices</span>';
           return `<tr>
             <td class="mono" style="font-size:13px;font-weight:600">${Utils.escapeHtml(p.name)}</td>
             <td class="mono text-muted" style="font-size:12px">${Utils.escapeHtml(p.policy?.repository || '—')}</td>
             <td class="mono text-muted" style="font-size:11px">${Utils.escapeHtml(p.policy?.schedule || '—')}</td>
+            <td style="vertical-align:top;padding-top:8px">${indicesHtml}</td>
             <td class="mono text-muted" style="font-size:11px">${p.policy?.retention ? JSON.stringify(p.policy.retention) : '—'}</td>
             <td>${last ? `<span class="badge badge-green">✓ ${Utils.relativeTime(last.time_string ? new Date(last.time_string).getTime() : null)}</span>` : '<span class="text-muted">—</span>'}</td>
             <td>${fail ? `<span class="badge badge-red">✗ ${Utils.relativeTime(fail.time_string ? new Date(fail.time_string).getTime() : null)}</span>` : '<span class="badge badge-green">none</span>'}</td>
