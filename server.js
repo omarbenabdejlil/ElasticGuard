@@ -10,6 +10,8 @@ app.use('/api/cluster',      require('./routes/cluster'));
 app.use('/api/indices',      require('./routes/indices'));
 app.use('/api/ilm',          require('./routes/ilm'));
 app.use('/api/snapshots',    require('./routes/snapshots'));
+const relocationRoute = require('./routes/relocation');
+app.use('/api/relocation', relocationRoute);
 app.use('/api/diagnostics',  require('./routes/diagnostics'));
 app.use('/api/codec',        require('./routes/codec'));
 app.use('/api/ilm-health',   require('./routes/ilm-health'));

@@ -290,7 +290,7 @@ body {
 
 table { width: 100%; border-collapse: collapse; }
 
-thead th {
+thead th { /* overridden by diag */
   background: #f8f9fa;
   padding: 9px 12px;
   text-align: left;

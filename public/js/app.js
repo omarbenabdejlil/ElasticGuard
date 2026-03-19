@@ -5,6 +5,7 @@
     ilm:         ILM,
     ilmhealth:   ILMHealth,
     snapshots:   Snapshots,
+  relocation: { render: loadRelocationPage },
     diagnostics: Diagnostics,
     codec:       Codec,
     simulator:   Simulator,
@@ -19,6 +20,7 @@
   let currentPage = null;
 
   function showPage(name) {
+    if (typeof relocationTimer !== 'undefined' && name !== 'relocation') { clearInterval(relocationTimer); relocationTimer = null; }
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
     document.getElementById(`page-${name}`)?.classList.add('active');

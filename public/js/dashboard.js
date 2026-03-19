@@ -12,6 +12,53 @@ const Dashboard = {
       const usedDisk = totalDisk - availDisk;
       const diskPct = totalDisk ? Math.round(usedDisk / totalDisk * 100) : 0;
 
+      // Fetch relocation data for alerts
+      let relocationShards = [];
+      let unassignedDetail = [];
+      try {
+        const relJson = await API.get('/api/relocation');
+        relocationShards = relJson.shards || [];
+      } catch(e) {}
+
+      const unassignedPrimary = h.unassigned_shards > 0;
+      const nodesHighDisk  = data.nodes.filter(n => n.disk_used_pct > 85);
+      const nodesHighHeap  = data.nodes.filter(n => n.heap_used_pct > 85);
+      const nodesHighCpu   = data.nodes.filter(n => n.os_cpu > 90);
+
+      const alerts = [];
+      if (h.status === 'red')
+        alerts.push({ level:'red',   icon:'🔴', msg: `Cluster is <strong>RED</strong> — one or more primary shards unassigned. Data may be unavailable.` });
+      if (h.status === 'yellow')
+        alerts.push({ level:'yellow', icon:'🟡', msg: `Cluster is <strong>YELLOW</strong> — some replica shards unassigned.` });
+      if (h.unassigned_shards > 0)
+        alerts.push({ level: unassignedPrimary ? 'red' : 'yellow', icon: unassignedPrimary ? '🔴' : '🟡', msg: `<strong>${h.unassigned_shards} unassigned shard${h.unassigned_shards>1?'s':''}</strong> detected. <a href="#" onclick="document.querySelector('.nav-link[data-page=diagnostics]').click();return false;" style="color:inherit;text-decoration:underline">View in Diagnostics →</a>` });
+      if (relocationShards.length > 0)
+        alerts.push({ level:'info', icon:'🔵', msg: `<strong>${relocationShards.length} shard${relocationShards.length>1?'s':''} relocating</strong> — ${[...new Set(relocationShards.map(r=>r.index))].length} indices affected. <a href="#" onclick="document.querySelector('.nav-link[data-page=relocation]').click();return false;" style="color:inherit;text-decoration:underline">View in Relocation Monitor →</a>` });
+      if (nodesHighDisk.length > 0)
+        alerts.push({ level:'red',   icon:'💾', msg: `<strong>${nodesHighDisk.length} node${nodesHighDisk.length>1?'s':''}</strong> above 85% disk: ${nodesHighDisk.map(n=>n.name).join(', ')}` });
+      if (nodesHighHeap.length > 0)
+        alerts.push({ level:'yellow', icon:'🧠', msg: `<strong>${nodesHighHeap.length} node${nodesHighHeap.length>1?'s':''}</strong> above 85% heap: ${nodesHighHeap.map(n=>n.name).join(', ')}` });
+      if (nodesHighCpu.length > 0)
+        alerts.push({ level:'yellow', icon:'⚡', msg: `<strong>${nodesHighCpu.length} node${nodesHighCpu.length>1?'s':''}</strong> above 90% CPU: ${nodesHighCpu.map(n=>n.name).join(', ')}` });
+
+      const alertColors = {
+        red:    { bg:'#fef2f2', border:'#fca5a5', text:'#7f1d1d' },
+        yellow: { bg:'#fffbeb', border:'#fcd34d', text:'#78350f' },
+        info:   { bg:'#eff6ff', border:'#93c5fd', text:'#1e3a5f' },
+      };
+
+      const alertsHtml = alerts.length === 0
+        ? `<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;color:#14532d;font-size:13px;font-weight:500">
+            ✅ <span>All systems healthy — no active alerts</span>
+           </div>`
+        : alerts.map(a => {
+            const c = alertColors[a.level] || alertColors.info;
+            return `<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;background:${c.bg};border:1px solid ${c.border};border-radius:10px;color:${c.text};font-size:13px;line-height:1.5">
+              <span style="font-size:16px;flex-shrink:0">${a.icon}</span>
+              <span>${a.msg}</span>
+            </div>`;
+          }).join('');
+
       el.innerHTML = `
         <div class="page-header page-header-row">
           <div>
@@ -64,6 +111,15 @@ const Dashboard = {
           </div>
         </div>
 
+        <div class="section" style="margin-bottom:24px">
+          <div class="section-header">
+            <div class="section-title">🚨 Cluster Alerts <span class="section-count">${alerts.length} active</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${alertsHtml}
+          </div>
+        </div>
+
         <div class="section">
           <div class="section-header">
             <div class="section-title">⬡ Nodes <span class="section-count">${data.nodes.length} nodes</span></div>
@@ -76,7 +132,6 @@ const Dashboard = {
 
       document.getElementById('dash-refresh')?.addEventListener('click', () => Dashboard.render());
 
-      // Update cluster badge
       const badge = document.getElementById('cluster-name-nav');
       if (badge) badge.textContent = h.cluster_name;
       const dot = document.querySelector('.cluster-badge .status-dot');
